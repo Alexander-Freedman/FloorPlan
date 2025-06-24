@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-  <title>Floor Plan Optimizer — Alexander Freedman</title>
+  <title>Floor Plan Optimizer</title>
   <!-- Favicon -->
   <link rel="icon" type="image/png" sizes="32x32" href="usig.png" />
   <link rel="shortcut icon" href="usig.png" />
@@ -52,6 +52,8 @@
     <div class="p-3 flex-grow-1 overflow-auto">
       <form id="controlForm">
         <div id="errorMsg" class="text-danger text-center mb-2" style="display:none;"></div>
+        <!-- Status message inserted just above the choose file button -->
+        <div id="statusMsg" class="text-center mb-2" style="display:none; color:#00478F; font-weight:600;"></div>
         <div class="mb-3 text-center">
           <input class="form-control" type="file" id="fileInput" accept=".pdf" />
         </div>
@@ -118,6 +120,7 @@
     const downloadBtn = document.getElementById('downloadBtn');
     const saveAsBtn = document.getElementById('saveAsBtn');
     const errorMsg = document.getElementById('errorMsg');
+    const statusMsg = document.getElementById('statusMsg');
     const infoFilename = document.getElementById('info-filename');
     const infoDate = document.getElementById('info-date');
     const infoSize = document.getElementById('info-size');
@@ -166,6 +169,7 @@
 
     input.addEventListener('change', () => {
       errorMsg.style.display = 'none';
+      statusMsg.style.display = 'none';
       if (!input.files.length) return;
       const file = input.files[0];
       if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
@@ -188,6 +192,8 @@
     actionBtn.addEventListener('click', async () => {
       actionBtn.disabled = true;
       exportCtrls.classList.add('d-none');
+      statusMsg.textContent = 'Processing in Photopea…';
+      statusMsg.style.display = 'block';
       if (messageHandler) { window.removeEventListener('message', messageHandler); messageHandler = null; }
       if (latestUrl) { URL.revokeObjectURL(latestUrl); latestUrl = ''; }
 
@@ -209,6 +215,7 @@
         pdfEmbed.src = latestUrl;
         pdfEmbed.style.display = 'block';
         exportCtrls.classList.remove('d-none');
+        statusMsg.textContent = 'Processed ✔️';
 
         downloadBtn.onclick = () => { const a = document.createElement('a'); a.href = latestUrl; a.download = originalName.replace(/\.[^.]+$/, '') + '-updated.pdf'; document.body.appendChild(a); a.click(); a.remove(); };
         saveAsBtn.onclick = async () => { if (window.showSaveFilePicker) { try { const handle = await window.showSaveFilePicker({ suggestedName: originalName.replace(/\.[^.]+$/, '') + '-updated.pdf', types:[{description:'PDF Files',accept:{'application/pdf':['.pdf']}}] }); const writable = await handle.createWritable(); await writable.write(latestBlob); await writable.close(); } catch (err) { console.error(err); } } else alert('Save As not supported.'); };
