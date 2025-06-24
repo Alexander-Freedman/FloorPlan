@@ -19,16 +19,14 @@
     #placeholder .icon { display: block; font-size: 3rem; margin-bottom: 0.5rem; }
     .vh-100-no-scroll { height: 100vh; overflow: hidden; }
     /* Header Gradient */
-    #sidebar .sidebar-header { background: linear-gradient(135deg, #ADD8E6, #00478F); }
+    #sidebar .sidebar-header { position: relative; background: linear-gradient(135deg, #ADD8E6, #00478F); }
     /* Button overrides */
     .btn-primary { background-color: #00478F; border-color: #00478F; color: #fff; }
     .btn-primary:hover, .btn-primary:focus { background-color: #003d7a; border-color: #003d7a; color: #fff; }
     .btn-primary:disabled, .btn-primary[disabled] { background-color: #ccc!important; border-color: #ccc!important; color: #fff!important; cursor: not-allowed; }
     .btn-outline-primary { color: #00478F; border-color: #00478F; }
     .btn-outline-primary:hover, .btn-outline-primary:focus { background-color: #00478F; color: #fff; }
-    /* Clickable site reload */
     .clickable-logo, .clickable-title { cursor: pointer; }
-    /* Timestamp styling */
     .timestamp { font-size: 0.8rem; color: #6c757d; }
   </style>
 </head>
@@ -46,6 +44,10 @@
         <a href="https://linkedin.com/in/alexanderrfreedman" target="_blank" class="text-white me-3">LinkedIn</a>
         <a href="https://github.com/Alexander-Freedman" target="_blank" class="text-white">GitHub</a>
       </div>
+      <!-- Help tooltip button -->
+      <button type="button" class="btn btn-light btn-sm position-absolute bottom-0 end-0 m-2" data-bs-toggle="tooltip" title="Download a PDF of the floor plans from HIM. Upload here.">
+        ?
+      </button>
     </div>
     <div class="p-3 flex-grow-1 overflow-auto">
       <form id="controlForm">
@@ -73,13 +75,28 @@
         </div>
       </form>
     </div>
+    <!-- Sidebar footer -->
+    <footer  class="text-center p-2 mt-auto" style="color: #6c757d;">
+      © 2025 Alexander Freedman
+    </footer>
+  </div>
+    </div>
   </div>
   <div id="preview-container" class="vh-100-no-scroll">
     <div id="placeholder"><span class="icon">📂</span>No file selected</div>
     <embed id="pdfEmbed" src="" type="application/pdf" />
   </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    // Initialize Bootstrap tooltips
+    document.addEventListener('DOMContentLoaded', function () {
+      var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+      tooltipTriggerList.map(function (el) {
+        return new bootstrap.Tooltip(el);
+      });
+    });
+
     // Photopea removal script
     const fullScript = `function deleteTextLayers(layers) {
       for (var i = layers.length - 1; i >= 0; i--) {
@@ -127,7 +144,6 @@
         const li = document.createElement('li');
         li.className = 'list-group-item list-group-item-action';
         li.style.cursor = 'pointer';
-        // split name and timestamp into styled spans
         li.innerHTML = `
           <span>${entry.origName}</span>
           <span class="timestamp float-end">${entry.date}</span>
@@ -187,7 +203,7 @@
         latestUrl = URL.createObjectURL(latestBlob);
         const date = new Date().toLocaleString();
         const size = fmtBytes(latestBlob.size);
-        historyEntries.push({ name: originalName + ' (' + date + ')', url: latestUrl, origName: originalName, date, size });
+        historyEntries.push({ origName: originalName, date, size, url: latestUrl });
         updateHistoryList();
         placeholder.style.display = 'none';
         pdfEmbed.src = latestUrl;
