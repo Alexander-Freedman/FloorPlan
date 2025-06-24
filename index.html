@@ -10,68 +10,32 @@
     html, body { height: 100%; margin: 0; position: relative; }
     body { display: flex; }
     #sidebar { min-width: 280px; max-width: 350px; }
-    #preview-container { flex: 1; }
-    #preview-container embed { width: 100%; height: 100%; }
+    #preview-container { flex: 1; position: relative; }
+    #preview-container embed { width: 100%; height: 100%; display: none; }
+    #placeholder { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #6c757d; font-size: 1.25rem; text-align: center; }
+    #placeholder .icon { display: block; font-size: 3rem; margin-bottom: 0.5rem; }
     .vh-100-no-scroll { height: 100vh; overflow: hidden; }
     /* Header Gradient */
-    #sidebar .sidebar-header {
-      background: linear-gradient(135deg, #ADD8E6, #00478F);
-    }
-    /* Button color overrides: enabled vs disabled */
-    .btn-primary {
-      background-color: #00478F;
-      border-color: #00478F;
-      color: #fff;
-    }
-    .btn-primary:hover, .btn-primary:focus {
-      background-color: #003d7a;
-      border-color: #003d7a;
-      color: #fff;
-    }
-    .btn-primary:disabled,
-    .btn-primary[disabled] {
-      background-color: #ccc !important;
-      border-color: #ccc !important;
-      color: #fff !important;
-      cursor: not-allowed;
-    }
-    .btn-secondary {
-      background-color: #00478F;
-      border-color: #00478F;
-      color: #fff;
-    }
-    .btn-secondary:hover, .btn-secondary:focus {
-      background-color: #003d7a;
-      border-color: #003d7a;
-      color: #fff;
-    }
-    .btn-secondary:disabled,
-    .btn-secondary[disabled] {
-      background-color: #ccc !important;
-      border-color: #ccc !important;
-      color: #fff !important;
-      cursor: not-allowed;
-    }
-    .btn-outline-primary, .btn-outline-secondary {
-      color: #00478F;
-      border-color: #00478F;
-    }
-    .btn-outline-primary:hover, .btn-outline-secondary:hover,
-    .btn-outline-primary:focus, .btn-outline-secondary:focus {
-      background-color: #00478F;
-      color: #fff;
-    }
+    #sidebar .sidebar-header { background: linear-gradient(135deg, #ADD8E6, #00478F); }
+    /* Button overrides */
+    .btn-primary { background-color: #00478F; border-color: #00478F; color: #fff; }
+    .btn-primary:hover, .btn-primary:focus { background-color: #003d7a; border-color: #003d7a; color: #fff; }
+    .btn-primary:disabled, .btn-primary[disabled] { background-color: #ccc!important; border-color: #ccc!important; color: #fff!important; cursor: not-allowed; }
+    .btn-outline-primary { color: #00478F; border-color: #00478F; }
+    .btn-outline-primary:hover, .btn-outline-primary:focus { background-color: #00478F; color: #fff; }
+    /* Clickable site reload */
+    .clickable-logo, .clickable-title { cursor: pointer; }
+    /* Timestamp styling */
+    .timestamp { font-size: 0.8rem; color: #6c757d; }
   </style>
 </head>
 <body class="vh-100-no-scroll">
-  <!-- Sidebar -->
   <div id="sidebar" class="d-flex flex-column bg-light border-end vh-100-no-scroll">
-    <!-- Header -->
     <div class="p-3 text-white sidebar-header">
       <div class="d-flex align-items-center">
-        <img src="usig.png" alt="USIG Logo" width="50" class="me-3" />
+        <img src="usig.png" alt="USIG Logo" width="50" class="me-3 clickable-logo" onclick="location.reload()" />
         <div>
-          <h4 class="mb-0">Floor Plan Optimizer</h4>
+          <h4 class="mb-0 clickable-title" onclick="location.reload()">Floor Plan Optimizer</h4>
           <small class="opacity-75">by Alexander Freedman</small>
         </div>
       </div>
@@ -80,139 +44,160 @@
         <a href="https://github.com/Alexander-Freedman" target="_blank" class="text-white">GitHub</a>
       </div>
     </div>
-
-    <!-- Controls -->
     <div class="p-3 flex-grow-1 overflow-auto">
       <form id="controlForm">
+        <div id="errorMsg" class="text-danger text-center mb-2" style="display:none;"></div>
         <div class="mb-3 text-center">
           <input class="form-control" type="file" id="fileInput" accept=".pdf" />
         </div>
         <div class="d-grid gap-2 mb-3">
           <button type="button" id="actionBtn" class="btn btn-primary" disabled>Process PDF</button>
-          <button type="button" id="resetBtn" class="btn btn-secondary d-none">Do Another</button>
         </div>
         <div id="export-controls" class="d-none mb-3">
           <div class="btn-group w-100">
-            <button type="button" id="downloadPdfBtn" class="btn btn-outline-primary">Download PDF</button>
-            <button type="button" id="emailBtn" class="btn btn-outline-secondary">Email to…</button>
-            <button type="button" id="copyLinkBtn" class="btn btn-outline-secondary">Copy Link</button>
+            <button type="button" id="downloadBtn" class="btn btn-outline-primary">Download</button>
+            <button type="button" id="saveAsBtn" class="btn btn-outline-primary">Save As</button>
           </div>
         </div>
-
-        <!-- Document Info -->
         <ul id="doc-info" class="list-group">
           <li class="list-group-item"><strong>Filename:</strong> <span id="info-filename">N/A</span></li>
           <li class="list-group-item"><strong>Upload Date:</strong> <span id="info-date">N/A</span></li>
           <li class="list-group-item"><strong>File Size:</strong> <span id="info-size">N/A</span></li>
         </ul>
+        <div id="history-section" class="mt-4">
+          <h5>History</h5>
+          <ul id="history-list" class="list-group"></ul>
+        </div>
       </form>
     </div>
   </div>
-
-  <!-- Preview -->
   <div id="preview-container" class="vh-100-no-scroll">
+    <div id="placeholder"><span class="icon">📂</span>No file selected</div>
     <embed id="pdfEmbed" src="" type="application/pdf" />
   </div>
-
-  <!-- Bootstrap JS & Dependencies -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // Photopea script
-    const fullScript = `
-function deleteTextLayers(layers) {
-  for (var i = layers.length - 1; i >= 0; i--) {
-    var L = layers[i];
-    if (L.typename=='ArtLayer') {
-      var b=L.bounds, h=Math.round(b[3]-b[1]), w=Math.round(b[2]-b[0]);
-      if (L.kind==LayerKind.TEXT || (h==8&&w==8)) L.remove();
-    } else if (L.typename=='LayerSet') {
-      deleteTextLayers(L.layers);
+    // Photopea removal script
+    const fullScript = `function deleteTextLayers(layers) {
+      for (var i = layers.length - 1; i >= 0; i--) {
+        var L = layers[i];
+        if (L.typename=='ArtLayer') {
+          var b=L.bounds, h=Math.round(b[3]-b[1]), w=Math.round(b[2]-b[0]);
+          if (L.kind==LayerKind.TEXT || (h==8&&w==8)) L.remove();
+        } else if (L.typename=='LayerSet') { deleteTextLayers(L.layers); }
+      }
     }
-  }
-}
-(function(){
-  deleteTextLayers(app.activeDocument.layers);
-  app.activeDocument.saveToOE("pdf");
-})();`.trim();
+    (function(){ deleteTextLayers(app.activeDocument.layers); app.activeDocument.saveToOE("pdf");})();`.trim();
 
-    // DOM elements
+    // DOM refs
     const input = document.getElementById('fileInput');
     const actionBtn = document.getElementById('actionBtn');
-    const resetBtn = document.getElementById('resetBtn');
     const exportCtrls = document.getElementById('export-controls');
+    const placeholder = document.getElementById('placeholder');
     const pdfEmbed = document.getElementById('pdfEmbed');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const saveAsBtn = document.getElementById('saveAsBtn');
+    const errorMsg = document.getElementById('errorMsg');
     const infoFilename = document.getElementById('info-filename');
-    const infoDate     = document.getElementById('info-date');
-    const infoSize     = document.getElementById('info-size');
-    let originalName = '', fileSize = 0;
+    const infoDate = document.getElementById('info-date');
+    const infoSize = document.getElementById('info-size');
+    const historyList = document.getElementById('history-list');
+    let originalName = '', latestBlob = null, latestUrl = '', messageHandler = null;
+    const historyEntries = [];
 
-    // Reload page when clicking "Do Another"
-    resetBtn.addEventListener('click', () => location.reload());
-
-    function truncate(str, max = 30) {
-      return str.length <= max ? str : str.slice(0, max/2-1) + '…' + str.slice(-max/2+1);
-    }
     function fmtBytes(b) {
       if (b < 1024) return b + ' B';
       if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
       return (b/1048576).toFixed(1) + ' MB';
     }
 
-    input.addEventListener('change', () => {
-      if (!input.files.length) {
-        actionBtn.disabled = true;
-        infoFilename.textContent = 'N/A';
-        infoDate.textContent = 'N/A';
-        infoSize.textContent = 'N/A';
-        pdfEmbed.src = '';
-        exportCtrls.classList.add('d-none');
-        resetBtn.classList.add('d-none');
+    function updateHistoryList() {
+      historyList.innerHTML = '';
+      if (historyEntries.length === 0) {
+        const li = document.createElement('li');
+        li.className = 'list-group-item text-secondary';
+        li.textContent = 'No history yet';
+        historyList.appendChild(li);
         return;
       }
+      historyEntries.forEach(entry => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item list-group-item-action';
+        li.style.cursor = 'pointer';
+        // split name and timestamp into styled spans
+        li.innerHTML = `
+          <span>${entry.origName}</span>
+          <span class="timestamp float-end">${entry.date}</span>
+        `;
+        li.onclick = () => {
+          placeholder.style.display = 'none';
+          pdfEmbed.src = entry.url;
+          pdfEmbed.style.display = 'block';
+          exportCtrls.classList.remove('d-none');
+          infoFilename.textContent = entry.origName;
+          infoDate.textContent = entry.date;
+          infoSize.textContent = entry.size;
+        };
+        historyList.appendChild(li);
+      });
+    }
+
+    // Initialize history
+    updateHistoryList();
+
+    input.addEventListener('change', () => {
+      errorMsg.style.display = 'none';
+      if (!input.files.length) return;
       const file = input.files[0];
+      if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+        errorMsg.textContent = 'Please select a PDF file.';
+        errorMsg.style.display = 'block';
+        input.value = '';
+        return;
+      }
+      exportCtrls.classList.add('d-none');
+      actionBtn.disabled = false;
       originalName = file.name;
-      fileSize = file.size;
-      infoFilename.textContent = file.name;
+      infoFilename.textContent = originalName;
       infoDate.textContent = new Date().toLocaleString();
       infoSize.textContent = fmtBytes(file.size);
+      placeholder.style.display = 'none';
       pdfEmbed.src = URL.createObjectURL(file);
-      actionBtn.disabled = false;
+      pdfEmbed.style.display = 'block';
     });
 
     actionBtn.addEventListener('click', async () => {
       actionBtn.disabled = true;
-      const dataURL = await new Promise(r => {
-        const fr = new FileReader(); fr.onload = () => r(fr.result);
-        fr.readAsDataURL(input.files[0]);
-      });
+      exportCtrls.classList.add('d-none');
+      if (messageHandler) { window.removeEventListener('message', messageHandler); messageHandler = null; }
+      if (latestUrl) { URL.revokeObjectURL(latestUrl); latestUrl = ''; }
+
+      const dataURL = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(input.files[0]); });
       const iframe = document.createElement('iframe');
       iframe.style.display = 'none';
       iframe.src = 'https://www.photopea.com#' + encodeURIComponent(JSON.stringify({ files: [dataURL], script: fullScript }));
       document.body.appendChild(iframe);
-    });
 
-    window.addEventListener('message', function handler(e) {
-      if (!(e.data instanceof ArrayBuffer)) return;
-      const blob = new Blob([e.data], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      pdfEmbed.src = url;
-      exportCtrls.classList.remove('d-none');
-      resetBtn.classList.remove('d-none');
+      messageHandler = function(e) {
+        if (!(e.data instanceof ArrayBuffer)) return;
+        latestBlob = new Blob([e.data], { type: 'application/pdf' });
+        latestUrl = URL.createObjectURL(latestBlob);
+        const date = new Date().toLocaleString();
+        const size = fmtBytes(latestBlob.size);
+        historyEntries.push({ name: originalName + ' (' + date + ')', url: latestUrl, origName: originalName, date, size });
+        updateHistoryList();
+        placeholder.style.display = 'none';
+        pdfEmbed.src = latestUrl;
+        pdfEmbed.style.display = 'block';
+        exportCtrls.classList.remove('d-none');
 
-      document.getElementById('downloadPdfBtn').onclick = () => {
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = originalName.replace(/\.[^.]+$/, '') + '-updated.pdf';
-        document.body.appendChild(a); a.click(); a.remove();
-      };
-      document.getElementById('emailBtn').onclick = () => {
-        window.location.href = `mailto:?subject=Optimized ${encodeURIComponent(originalName)}&body=See attached: ${url}`;
-      };
-      document.getElementById('copyLinkBtn').onclick = () => {
-        navigator.clipboard.writeText(url).then(() => alert('Copied to clipboard'));
-      };
+        downloadBtn.onclick = () => { const a = document.createElement('a'); a.href = latestUrl; a.download = originalName.replace(/\.[^.]+$/, '') + '-updated.pdf'; document.body.appendChild(a); a.click(); a.remove(); };
+        saveAsBtn.onclick = async () => { if (window.showSaveFilePicker) { try { const handle = await window.showSaveFilePicker({ suggestedName: originalName.replace(/\.[^.]+$/, '') + '-updated.pdf', types:[{description:'PDF Files',accept:{'application/pdf':['.pdf']}}] }); const writable = await handle.createWritable(); await writable.write(latestBlob); await writable.close(); } catch (err) { console.error(err); } } else alert('Save As not supported.'); };
 
-      window.removeEventListener('message', handler);
+        window.removeEventListener('message', messageHandler);
+        messageHandler = null;
+      };
+      window.addEventListener('message', messageHandler);
     });
   </script>
 </body>
