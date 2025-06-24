@@ -1,4 +1,4 @@
-# Floor Plan Optimizer
+# [Floor Plan Optimizer](https://alexander-freedman.github.io/FloorPlan/)
 
 **Property of Alexander Freedman**
 
