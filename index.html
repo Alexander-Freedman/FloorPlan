@@ -57,6 +57,11 @@
         <div class="mb-3 text-center">
           <input class="form-control" type="file" id="fileInput" accept=".pdf" />
         </div>
+        <!-- Trim toggle -->
+        <div class="form-check form-switch mb-3 d-flex justify-content-end align-items-center">
+          <label class="form-check-label me-5" for="trimCheckbox">Trim</label>
+          <input class="form-check-input" type="checkbox" id="trimCheckbox">
+        </div>
         <div class="d-grid gap-2 mb-3">
           <button type="button" id="actionBtn" class="btn btn-primary" disabled>Process PDF</button>
         </div>
@@ -99,8 +104,8 @@
       });
     });
 
-    // Photopea removal script
-    const fullScript = `function deleteTextLayers(layers) {
+    // Photopea script (replaced per request)
+    const fullScript_primary = `function deleteTextLayers(layers) {
       for (var i = layers.length - 1; i >= 0; i--) {
         var L = layers[i];
         if (L.typename=='ArtLayer') {
@@ -110,6 +115,46 @@
       }
     }
     (function(){ deleteTextLayers(app.activeDocument.layers); app.activeDocument.saveToOE("pdf");})();`.trim();
+
+
+const fullScript_trim= `
+  var phrase = /floor\\s+plan\\s+drawings/i;
+
+  function hasPhrase(layer) {
+      if (layer.typename === "ArtLayer" && layer.kind === LayerKind.TEXT)
+          return phrase.test(layer.textItem.contents);
+      if (layer.layers)
+          for (var j = 0; j < layer.layers.length; j++)
+              if (hasPhrase(layer.layers[j])) return true;
+      return false;
+  }
+
+  var pages = app.activeDocument.layers;
+  for (var i = pages.length - 1; i >= 0; i--)
+      if (!hasPhrase(pages[i])) pages[i].remove();
+
+  function deleteTextLayers(layers) {
+      for (var i = layers.length - 1; i >= 0; i--) {
+          var L = layers[i];
+
+          if (L.typename == 'ArtLayer') {
+              var b = L.bounds,
+                  h = Math.round(b[3] - b[1]),
+                  w = Math.round(b[2] - b[0]);
+
+              if (L.kind == LayerKind.TEXT || (h == w && h <= 8)) {
+                  L.remove();
+              }
+          } else if (L.typename == 'LayerSet') {
+              deleteTextLayers(L.layers);
+          }
+      }
+  }
+
+  (function () {
+      deleteTextLayers(app.activeDocument.layers);
+      app.activeDocument.saveToOE('pdf');
+  })();`.trim();
 
     // DOM refs
     const input = document.getElementById('fileInput');
@@ -125,8 +170,15 @@
     const infoDate = document.getElementById('info-date');
     const infoSize = document.getElementById('info-size');
     const historyList = document.getElementById('history-list');
+    const trimCheckbox = document.getElementById('trimCheckbox');
     let originalName = '', latestBlob = null, latestUrl = '', messageHandler = null;
     const historyEntries = [];
+    let trim_bool = false;
+
+    // Track Trim toggle state
+    trimCheckbox.addEventListener('change', () => {
+      trim_bool = trimCheckbox.checked;
+    });
 
     function fmtBytes(b) {
       if (b < 1024) return b + ' B';
@@ -192,7 +244,7 @@
     actionBtn.addEventListener('click', async () => {
       actionBtn.disabled = true;
       exportCtrls.classList.add('d-none');
-      statusMsg.textContent = 'Processing in Photopea…';
+      statusMsg.textContent = 'Processing in API…';
       statusMsg.style.display = 'block';
       if (messageHandler) { window.removeEventListener('message', messageHandler); messageHandler = null; }
       if (latestUrl) { URL.revokeObjectURL(latestUrl); latestUrl = ''; }
@@ -200,7 +252,12 @@
       const dataURL = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(input.files[0]); });
       const iframe = document.createElement('iframe');
       iframe.style.display = 'none';
-      iframe.src = 'https://www.photopea.com#' + encodeURIComponent(JSON.stringify({ files: [dataURL], script: fullScript }));
+      if (trim_bool) {
+        iframe.src = 'https://www.photopea.com#' + encodeURIComponent(JSON.stringify({ files: [dataURL], script: fullScript_trim }));
+      }
+      else {
+        iframe.src = 'https://www.photopea.com#' + encodeURIComponent(JSON.stringify({ files: [dataURL], script: fullScript_primary }));
+      }
       document.body.appendChild(iframe);
 
       messageHandler = function(e) {
@@ -215,10 +272,10 @@
         pdfEmbed.src = latestUrl;
         pdfEmbed.style.display = 'block';
         exportCtrls.classList.remove('d-none');
-        statusMsg.textContent = 'Processed ✔️';
+        statusMsg.textContent = 'Processed';
 
-        downloadBtn.onclick = () => { const a = document.createElement('a'); a.href = latestUrl; a.download = originalName.replace(/\.[^.]+$/, '') + '-updated.pdf'; document.body.appendChild(a); a.click(); a.remove(); };
-        saveAsBtn.onclick = async () => { if (window.showSaveFilePicker) { try { const handle = await window.showSaveFilePicker({ suggestedName: originalName.replace(/\.[^.]+$/, '') + '-updated.pdf', types:[{description:'PDF Files',accept:{'application/pdf':['.pdf']}}] }); const writable = await handle.createWritable(); await writable.write(latestBlob); await writable.close(); } catch (err) { console.error(err); } } else alert('Save As not supported.'); };
+        downloadBtn.onclick = () => { const a = document.createElement('a'); a.href = latestUrl; a.download = originalName.replace(/[\.[^.]+$/, '') + '-updated.pdf'; document.body.appendChild(a); a.click(); a.remove(); };
+        saveAsBtn.onclick = async () => { if (window.showSaveFilePicker) { try { const handle = await window.showSaveFilePicker({ suggestedName: originalName.replace(/[\.[^.]+$/, '') + '-updated.pdf', types:[{description:'PDF Files',accept:{'application/pdf':['.pdf']}}] }); const writable = await handle.createWritable(); await writable.write(latestBlob); await writable.close(); } catch (err) { console.error(err); } } else alert('Save As not supported.'); };
 
         window.removeEventListener('message', messageHandler);
         messageHandler = null;
