@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="author" content = "Alexander Freedman">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
   <title>Floor Plan Optimizer</title>
   <!-- Favicon -->
@@ -59,7 +60,7 @@
           <input class="form-control" type="file" id="fileInput" accept=".pdf" />
         </div>
         <!-- Trim toggle -->
-        <div class="form-check form-switch mb-3 d-flex justify-content-end align-items-center">
+        <div class="form-check form-switch mb-3 d-flex justify-content-end align-items-center" id="trimSect">
           <label class="form-check-label me-5" for="trimCheckbox">Trim</label>
           <input class="form-check-input" type="checkbox" id="trimCheckbox">
         </div>
@@ -73,7 +74,12 @@
           </div>
         </div>
         <!-- NEW: Annotation Tools controls -->
+         
         <div id="draw-controls" class="d-none mb-3">
+          <div class="form-check form-switch mb-3 d-flex justify-content-end align-items-center">
+              <label class="form-check-label me-5" for="snapToBox">Snap-To Drawing</label>
+              <input class="form-check-input" type="checkbox" id="snapToBox" checked>
+        </div>
           <div class="btn-group w-100 mb-2">
             <button type="button" id="clearBtn" class="btn btn-primary" disabled>Clear Drawing</button>
           </div>
@@ -198,10 +204,13 @@
     const drawCtrls = document.getElementById('draw-controls');
     const status = document.getElementById('status');
     const canvasContainer = document.getElementById('canvasContainer');
+    const trimSect = document.getElementById('trimSect');
+    const snapToBox = document.getElementById('snapToBox');
 
     // State variables
     let originalName = '', latestBlob = null, latestUrl = '', messageHandler = null;
     let trim_bool = false;
+    let snapToBool = true;
     /* NEW: canvas drawing state variables */
     let canvasCtx, overlayCtx;
     let pageWidth, pageHeight;
@@ -234,6 +243,7 @@
         input.value = '';
         return;
       }
+      trimSect.setAttribute("style", "display: block");
       exportCtrls.classList.add('d-none');
       drawCtrls.classList.add('d-none');        /* NEW: hide drawing controls for new file */
       if (canvasContainer) canvasContainer.classList.add('d-none');  /* NEW: hide canvas editor if it was open */
@@ -298,16 +308,19 @@
       if (polygon.length < 3) return;
       clearBtn.disabled = true;
       isDrawing = false;
-      for (let i = 0; i < polygon.length; i++) {
-        const { x, y } = snapToContour(polygon[i].x, polygon[i].y);
-        polygon[i] = { x, y }; 
+
+      if (snapToBool) {
+        for (let i = 0; i < polygon.length; i++) {
+          const { x, y } = snapToContour(polygon[i].x, polygon[i].y);
+          polygon[i] = { x, y }; 
+        }
       }
+
       allPolygons.push(polygon);
       fillPolygon(polygon);
       polygon = [];
       isDrawing = true;
       completeBtn.disabled = true;
-      downloadPdfBtn.disabled = false;
       status.textContent = '✅ Shape filled. Continue or download.';
     });
 
@@ -318,6 +331,10 @@
       isDrawing = true;
       drawOverlay();
       status.textContent = 'Drawing cleared. Click to start again.';
+    });
+
+    snapToBox.addEventListener('change', () => {
+      snapToBool = snapToBox.checked;
     });
 
     function drawOverlay(preview) {
@@ -375,6 +392,7 @@
     // Process PDF button handler (Project A logic with modifications)
     actionBtn.addEventListener('click', async () => {
       actionBtn.disabled = true;
+      trimSect.setAttribute("style", "display: none !important");
       exportCtrls.classList.add('d-none');
       statusMsg.textContent = 'Processing in API…';
       statusMsg.style.display = 'block';
