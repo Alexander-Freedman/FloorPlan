@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -321,7 +322,7 @@
       polygon = [];
       isDrawing = true;
       completeBtn.disabled = true;
-      status.textContent = '✅ Shape filled. Continue or download.';
+      status.textContent = 'Shape filled. Continue or download.';
     });
 
     clearBtn.addEventListener('click', () => {
@@ -470,13 +471,13 @@
     clearBtn.disabled    = true;
     drawCtrls.classList.remove('d-none');
     overlay.style.pointerEvents = 'auto';
-    status.textContent = '✅ PDF rendered. Click to outline shape.';
+    status.textContent = 'PDF rendered. Click to outline shape.';
     drawOverlay();
 
     console.log('Canvas editor activated for annotation.');
   } catch (err) {
     console.error('Error rendering PDF for editing:', err);
-    status.textContent = `❌ Error: ${err.message}`;
+    status.textContent = `Error: ${err.message}`;
   }
 
   /* ――― show export controls ――― */
@@ -495,7 +496,7 @@
       a.remove();
       console.log('Processed PDF downloaded.');
     } else {
-      status.textContent = '📦 Generating PDF…';
+      status.textContent = 'Generating PDF…';
       const doc = new jsPDF({ unit: 'px', format: [pageWidth, pageHeight], compress: true });
       const mergeCanvas = document.createElement('canvas');
       mergeCanvas.width  = pageWidth;
@@ -505,7 +506,7 @@
       doc.addImage(imgData, 'JPEG', 0, 0, pageWidth, pageHeight);
       const filename = originalName.replace(/\.[^.]+$/, '') + '-annotated.pdf';
       doc.save(filename);
-      status.textContent = '✅ PDF ready.';
+      status.textContent = 'PDF ready.';
       console.log('Annotated PDF downloaded.');
     }
   };
@@ -522,7 +523,7 @@
       let pdfBlobToSave = latestBlob;
 
       if (allPolygons.length !== 0) {
-        status.textContent = '📦 Generating PDF…';
+        status.textContent = 'Generating PDF…';
         const doc = new jsPDF({ unit: 'px', format: [pageWidth, pageHeight] });
         const mergeCanvas = document.createElement('canvas');
         mergeCanvas.width  = pageWidth;
@@ -543,7 +544,7 @@
       await writable.write(pdfBlobToSave);
       await writable.close();
 
-      status.textContent = '✅ PDF saved.';
+      status.textContent = 'PDF saved.';
       console.log('PDF saved via Save As.');
 
       /* refresh latestBlob / URL if we generated a new file */
