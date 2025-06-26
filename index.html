@@ -13,21 +13,24 @@
     html, body { height: 100%; margin: 0; position: relative; }
     body { display: flex; }
     #sidebar { min-width: 280px; max-width: 350px; }
-    #preview-container { flex: 1; position: relative; }
+    #preview-container { flex: 1; position: relative; overflow: auto; } /* MODIFIED: added overflow for canvas scrolling */
     #preview-container embed { width: 100%; height: 100%; display: none; }
     #placeholder { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #6c757d; font-size: 1.25rem; text-align: center; }
-    #placeholder .icon { display: block; font-size: 3rem; margin-bottom: 0.5rem; }
     .vh-100-no-scroll { height: 100vh; overflow: hidden; }
     /* Header Gradient */
     #sidebar .sidebar-header { position: relative; background: linear-gradient(135deg, #ADD8E6, #00478F); }
     /* Button overrides */
     .btn-primary { background-color: #00478F; border-color: #00478F; color: #fff; }
     .btn-primary:hover, .btn-primary:focus { background-color: #003d7a; border-color: #003d7a; color: #fff; }
-    .btn-primary:disabled, .btn-primary[disabled] { background-color: #ccc!important; border-color: #ccc!important; color: #fff!important; cursor: not-allowed; }
+    .btn-primary:disabled, .btn-primary[disabled] { background-color: #ccc !important; border-color: #ccc !important; color: #fff !important; cursor: not-allowed; }
     .btn-outline-primary { color: #00478F; border-color: #00478F; }
     .btn-outline-primary:hover, .btn-outline-primary:focus { background-color: #00478F; color: #fff; }
     .clickable-logo, .clickable-title { cursor: pointer; }
     .timestamp { font-size: 0.8rem; color: #6c757d; }
+    /* NEW: Canvas editor styling */
+    #canvasContainer { position: relative; } /* NEW: container for PDF canvas and overlay */
+    #canvasContainer canvas { border: 1px solid #ccc; display: block; } /* NEW: canvas element style */
+    #overlay { position: absolute; top: 0; left: 0; cursor: crosshair; pointer-events: none; } /* NEW: overlay for drawing (enabled after render) */
   </style>
 </head>
 <body class="vh-100-no-scroll">
@@ -45,9 +48,7 @@
         <a href="https://github.com/Alexander-Freedman" target="_blank" class="text-white">GitHub</a>
       </div>
       <!-- Help tooltip button -->
-      <button type="button" class="btn btn-light btn-sm position-absolute bottom-0 end-0 m-2" data-bs-toggle="tooltip" title="Download a PDF of the floor plans from HIM. Upload here.">
-        ?
-      </button>
+      <button type="button" class="btn btn-light btn-sm position-absolute bottom-0 end-0 m-2" data-bs-toggle="tooltip" title="Download a PDF of the floor plans from HIM. Upload here.">?</button>
     </div>
     <div class="p-3 flex-grow-1 overflow-auto">
       <form id="controlForm">
@@ -71,32 +72,53 @@
             <button type="button" id="saveAsBtn" class="btn btn-outline-primary">Save As</button>
           </div>
         </div>
+        <!-- NEW: Annotation Tools controls -->
+        <div id="draw-controls" class="d-none mb-3">
+          <div class="btn-group w-100 mb-2">
+            <button type="button" id="clearBtn" class="btn btn-primary" disabled>Clear Drawing</button>
+          </div>
+          <div class="d-grid gap-2">
+            <button type="button" id="completeBtn" class="btn btn-primary" disabled>Complete Shape &amp; Fill</button>
+          </div>
+          <div id="status" class="mt-2 small text-muted">Select a tool and draw on the PDF.</div>
+        </div>
+        <!-- End NEW -->
         <ul id="doc-info" class="list-group">
           <li class="list-group-item"><strong>Filename:</strong> <span id="info-filename">N/A</span></li>
           <li class="list-group-item"><strong>Upload Date:</strong> <span id="info-date">N/A</span></li>
           <li class="list-group-item"><strong>File Size:</strong> <span id="info-size">N/A</span></li>
         </ul>
-        <div id="history-section" class="mt-4">
-          <h5>History</h5>
-          <ul id="history-list" class="list-group"></ul>
-        </div>
       </form>
     </div>
     <!-- Sidebar footer -->
-    <footer  class="text-center p-2 mt-auto" style="color: #6c757d;">
+    <footer class="text-center p-2 mt-auto" style="color: #6c757d;">
       © 2025 Alexander Freedman
     </footer>
-  </div>
-    </div>
   </div>
   <div id="preview-container" class="vh-100-no-scroll">
     <div id="placeholder"><span class="icon">📂</span>No file selected</div>
     <embed id="pdfEmbed" src="" type="application/pdf" />
+    <!-- NEW: Canvas-based PDF editor container -->
+    <div id="canvasContainer" class="d-none">
+      <canvas id="pdfCanvas"></canvas>
+      <canvas id="overlay"></canvas>
+    </div>
+    <!-- End NEW -->
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- NEW: PDF.js and jsPDF libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <script>
-    // Initialize Bootstrap tooltips
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    const { jsPDF } = window.jspdf;
+  </script>
+  <!-- End NEW -->
+  <script>
+    // Initialize Bootstrap tooltips (existing functionality from Project A)
     document.addEventListener('DOMContentLoaded', function () {
       var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
       tooltipTriggerList.map(function (el) {
@@ -104,7 +126,7 @@
       });
     });
 
-    // Photopea script (replaced per request)
+    // Photopea scripts (from Project A)
     const fullScript_primary = `function deleteTextLayers(layers) {
       for (var i = layers.length - 1; i >= 0; i--) {
         var L = layers[i];
@@ -114,50 +136,49 @@
         } else if (L.typename=='LayerSet') { deleteTextLayers(L.layers); }
       }
     }
-    (function(){ deleteTextLayers(app.activeDocument.layers); app.activeDocument.saveToOE("pdf");})();`.trim();
+    (function(){ 
+      deleteTextLayers(app.activeDocument.layers); 
+      app.activeDocument.saveToOE("pdf");
+      app.activeDocument.flatten();      
+      })();`.trim();
 
-
-const fullScript_trim= `
-  var phrase = /floor\\s+plan\\s+drawings/i;
-
-  function hasPhrase(layer) {
-      if (layer.typename === "ArtLayer" && layer.kind === LayerKind.TEXT)
-          return phrase.test(layer.textItem.contents);
-      if (layer.layers)
-          for (var j = 0; j < layer.layers.length; j++)
-              if (hasPhrase(layer.layers[j])) return true;
-      return false;
-  }
-
-  var pages = app.activeDocument.layers;
-  for (var i = pages.length - 1; i >= 0; i--)
-      if (!hasPhrase(pages[i])) pages[i].remove();
-
-  function deleteTextLayers(layers) {
-      for (var i = layers.length - 1; i >= 0; i--) {
-          var L = layers[i];
-
-          if (L.typename == 'ArtLayer') {
-              var b = L.bounds,
-                  h = Math.round(b[3] - b[1]),
-                  w = Math.round(b[2] - b[0]);
-
-              if (L.kind == LayerKind.TEXT || (h == w && h <= 8)) {
-                  L.remove();
+    const fullScript_trim = `
+      var phrase = /floor\\s+plan\\s+drawings/i;
+      function hasPhrase(layer) {
+          if (layer.typename === "ArtLayer" && layer.kind === LayerKind.TEXT)
+              return phrase.test(layer.textItem.contents);
+          if (layer.layers)
+              for (var j = 0; j < layer.layers.length; j++)
+                  if (hasPhrase(layer.layers[j])) return true;
+          return false;
+      }
+      var pages = app.activeDocument.layers;
+      for (var i = pages.length - 1; i >= 0; i--)
+          if (!hasPhrase(pages[i])) pages[i].remove();
+      function deleteTextLayers(layers) {
+          for (var i = layers.length - 1; i >= 0; i--) {
+              var L = layers[i];
+              if (L.typename == 'ArtLayer') {
+                  var b = L.bounds,
+                      h = Math.round(b[3] - b[1]),
+                      w = Math.round(b[2] - b[0]);
+                  if (L.kind == LayerKind.TEXT || (h == w && h <= 8)) {
+                      L.remove();
+                  }
+              } else if (L.typename == 'LayerSet') {
+                  deleteTextLayers(L.layers);
               }
-          } else if (L.typename == 'LayerSet') {
-              deleteTextLayers(L.layers);
           }
       }
-  }
+      (function () {
+          deleteTextLayers(app.activeDocument.layers);
+          app.activeDocument.saveToOE('pdf');
+          app.activeDocument.flatten();
+      })();`.trim();
 
-  (function () {
-      deleteTextLayers(app.activeDocument.layers);
-      app.activeDocument.saveToOE('pdf');
-  })();`.trim();
-
-    // DOM refs
+    // DOM element references
     const input = document.getElementById('fileInput');
+    const trimCheckbox = document.getElementById('trimCheckbox');  /* NEW: reference the Trim checkbox */
     const actionBtn = document.getElementById('actionBtn');
     const exportCtrls = document.getElementById('export-controls');
     const placeholder = document.getElementById('placeholder');
@@ -169,56 +190,39 @@ const fullScript_trim= `
     const infoFilename = document.getElementById('info-filename');
     const infoDate = document.getElementById('info-date');
     const infoSize = document.getElementById('info-size');
-    const historyList = document.getElementById('history-list');
-    const trimCheckbox = document.getElementById('trimCheckbox');
-    let originalName = '', latestBlob = null, latestUrl = '', messageHandler = null;
-    const historyEntries = [];
-    let trim_bool = false;
+    /* NEW: references to annotation tool elements */
+    const pdfCanvas = document.getElementById('pdfCanvas');
+    const overlay = document.getElementById('overlay');
+    const completeBtn = document.getElementById('completeBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const drawCtrls = document.getElementById('draw-controls');
+    const status = document.getElementById('status');
+    const canvasContainer = document.getElementById('canvasContainer');
 
-    // Track Trim toggle state
+    // State variables
+    let originalName = '', latestBlob = null, latestUrl = '', messageHandler = null;
+    let trim_bool = false;
+    /* NEW: canvas drawing state variables */
+    let canvasCtx, overlayCtx;
+    let pageWidth, pageHeight;
+    let pdfDoc = null;
+    let pdfPixels;
+    let allPolygons = [];   // array of completed polygons
+    let polygon = [];       // current drawing polygon points
+    let isDrawing = true;
+
+    // Track Trim toggle state (Project A)
     trimCheckbox.addEventListener('change', () => {
       trim_bool = trimCheckbox.checked;
     });
 
     function fmtBytes(b) {
       if (b < 1024) return b + ' B';
-      if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
-      return (b/1048576).toFixed(1) + ' MB';
+      if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+      return (b / 1048576).toFixed(1) + ' MB';
     }
 
-    function updateHistoryList() {
-      historyList.innerHTML = '';
-      if (historyEntries.length === 0) {
-        const li = document.createElement('li');
-        li.className = 'list-group-item text-secondary';
-        li.textContent = 'No history yet';
-        historyList.appendChild(li);
-        return;
-      }
-      historyEntries.forEach(entry => {
-        const li = document.createElement('li');
-        li.className = 'list-group-item list-group-item-action';
-        li.style.cursor = 'pointer';
-        li.innerHTML = `
-          <span>${entry.origName}</span>
-          <span class="timestamp float-end">${entry.date}</span>
-        `;
-        li.onclick = () => {
-          placeholder.style.display = 'none';
-          pdfEmbed.src = entry.url;
-          pdfEmbed.style.display = 'block';
-          exportCtrls.classList.remove('d-none');
-          infoFilename.textContent = entry.origName;
-          infoDate.textContent = entry.date;
-          infoSize.textContent = entry.size;
-        };
-        historyList.appendChild(li);
-      });
-    }
-
-    // Initialize history
-    updateHistoryList();
-
+    // File selection handler
     input.addEventListener('change', () => {
       errorMsg.style.display = 'none';
       statusMsg.style.display = 'none';
@@ -231,55 +235,310 @@ const fullScript_trim= `
         return;
       }
       exportCtrls.classList.add('d-none');
+      drawCtrls.classList.add('d-none');        /* NEW: hide drawing controls for new file */
+      if (canvasContainer) canvasContainer.classList.add('d-none');  /* NEW: hide canvas editor if it was open */
+      if (latestUrl) { URL.revokeObjectURL(latestUrl); latestUrl = ''; }  /* NEW: revoke old object URL to free memory */
       actionBtn.disabled = false;
       originalName = file.name;
       infoFilename.textContent = originalName;
       infoDate.textContent = new Date().toLocaleString();
       infoSize.textContent = fmtBytes(file.size);
+      /* NEW: reset annotation state for new file */
+      allPolygons = [];
+      polygon = [];
+      isDrawing = true;
+      completeBtn.disabled = true;
+      clearBtn.disabled = true;
       placeholder.style.display = 'none';
       pdfEmbed.src = URL.createObjectURL(file);
       pdfEmbed.style.display = 'block';
     });
 
+    function snapToContour(x, y) {
+      const radius = 45;
+      let best = { x, y, dist2: radius * radius };
+      if (!pdfPixels) return { x, y };
+      for (let dy = -radius; dy <= radius; dy++) {
+        const yy = y + dy;
+        if (yy < 0 || yy >= pageHeight) continue;
+        for (let dx = -radius; dx <= radius; dx++) {
+          const xx = x + dx;
+          if (xx < 0 || xx >= pageWidth) continue;
+          const d2 = dx * dx + dy * dy;
+          if (d2 >= best.dist2) continue;
+          const idx = (yy * pageWidth + xx) * 4;
+          const r = pdfPixels[idx], g = pdfPixels[idx+1], b = pdfPixels[idx+2];
+          if (Math.abs(r-g) < 20 && Math.abs(r-b) < 20 && r > 80 && r < 200) {
+            best = { x: xx, y: yy, dist2: d2 };
+          }
+        }
+      }
+      return { x: best.x, y: best.y };
+    }
+
+    overlay.addEventListener('click', (e) => {
+      const rect = overlay.getBoundingClientRect();
+      const rawX = e.clientX - rect.left;
+      const rawY = e.clientY - rect.top;
+      if (!isDrawing) return;
+      polygon.push({ x: rawX, y: rawY });
+      completeBtn.disabled = polygon.length < 3;
+      drawOverlay();
+      status.textContent = `Outlined points: ${polygon.length}.`;
+    });
+
+    overlay.addEventListener('mousemove', (e) => {
+      const rect = overlay.getBoundingClientRect();
+      const rawX = e.clientX - rect.left;
+      const rawY = e.clientY - rect.top;
+      drawOverlay({ x: rawX, y: rawY });
+    });
+
+    completeBtn.addEventListener('click', () => {
+      if (polygon.length < 3) return;
+      clearBtn.disabled = true;
+      isDrawing = false;
+      for (let i = 0; i < polygon.length; i++) {
+        const { x, y } = snapToContour(polygon[i].x, polygon[i].y);
+        polygon[i] = { x, y }; 
+      }
+      allPolygons.push(polygon);
+      fillPolygon(polygon);
+      polygon = [];
+      isDrawing = true;
+      completeBtn.disabled = true;
+      downloadPdfBtn.disabled = false;
+      status.textContent = '✅ Shape filled. Continue or download.';
+    });
+
+    clearBtn.addEventListener('click', () => {
+      clearBtn.disabled = true;
+      allPolygons = [];
+      polygon = [];
+      isDrawing = true;
+      drawOverlay();
+      status.textContent = 'Drawing cleared. Click to start again.';
+    });
+
+    function drawOverlay(preview) {
+      overlayCtx.clearRect(0, 0, pageWidth, pageHeight);
+      overlayCtx.strokeStyle = 'blue';
+      overlayCtx.lineWidth = 2;
+      overlayCtx.setLineDash([]);
+      allPolygons.forEach(poly => {
+        overlayCtx.beginPath();
+        overlayCtx.moveTo(poly[0].x, poly[0].y);
+        //UNCOMMENT TO HAVE OVERLAY ON PATH
+        //poly.slice(1).forEach(p => overlayCtx.lineTo(p.x, p.y));
+        overlayCtx.closePath();
+        overlayCtx.stroke();
+      });
+      if (polygon.length) {
+        overlayCtx.beginPath();
+        clearBtn.disabled = false;
+        overlayCtx.moveTo(polygon[0].x, polygon[0].y);
+        polygon.slice(1).forEach(p => overlayCtx.lineTo(p.x, p.y));
+        overlayCtx.stroke();
+        if (preview) {
+          overlayCtx.setLineDash([5, 5]);
+          overlayCtx.beginPath();
+          overlayCtx.moveTo(polygon[polygon.length - 1].x, polygon[polygon.length - 1].y);
+          overlayCtx.lineTo(preview.x, preview.y);
+          overlayCtx.stroke();
+          overlayCtx.setLineDash([]);
+        }
+      }
+    }
+
+    function fillPolygon(poly) {
+      overlayCtx.clearRect(0, 0, pageWidth, pageHeight);
+      overlayCtx.save();
+      overlayCtx.beginPath();
+      overlayCtx.moveTo(poly[0].x, poly[0].y);
+      poly.slice(1).forEach(p => overlayCtx.lineTo(p.x, p.y));
+      overlayCtx.closePath();
+      overlayCtx.clip();
+      overlayCtx.strokeStyle = 'blue';
+      overlayCtx.lineWidth = 1;
+      const step = 40;
+      for (let x0 = -pageHeight; x0 < pageWidth + pageHeight; x0 += step) {
+        overlayCtx.beginPath();
+        overlayCtx.moveTo(x0, 0);
+        overlayCtx.lineTo(x0 + pageHeight, pageHeight);
+        overlayCtx.stroke();
+      }
+      overlayCtx.restore();
+      canvasCtx.drawImage(overlay, 0, 0);
+      overlayCtx.clearRect(0, 0, pageWidth, pageHeight);
+    }
+
+    // Process PDF button handler (Project A logic with modifications)
     actionBtn.addEventListener('click', async () => {
       actionBtn.disabled = true;
       exportCtrls.classList.add('d-none');
       statusMsg.textContent = 'Processing in API…';
       statusMsg.style.display = 'block';
-      if (messageHandler) { window.removeEventListener('message', messageHandler); messageHandler = null; }
+      if (messageHandler) { 
+        window.removeEventListener('message', messageHandler); 
+        messageHandler = null; 
+      }
       if (latestUrl) { URL.revokeObjectURL(latestUrl); latestUrl = ''; }
 
-      const dataURL = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(input.files[0]); });
+      // Read file as dataURL for Photopea
+      const dataURL = await new Promise(resolve => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(fr.result);
+        fr.readAsDataURL(input.files[0]);
+      });
       const iframe = document.createElement('iframe');
       iframe.style.display = 'none';
+      // Use appropriate Photopea script (trim or primary)
       if (trim_bool) {
         iframe.src = 'https://www.photopea.com#' + encodeURIComponent(JSON.stringify({ files: [dataURL], script: fullScript_trim }));
-      }
-      else {
+      } else {
         iframe.src = 'https://www.photopea.com#' + encodeURIComponent(JSON.stringify({ files: [dataURL], script: fullScript_primary }));
       }
       document.body.appendChild(iframe);
 
-      messageHandler = function(e) {
-        if (!(e.data instanceof ArrayBuffer)) return;
-        latestBlob = new Blob([e.data], { type: 'application/pdf' });
+      // MODIFIED: message handler to handle Photopea response and initiate editor
+      messageHandler = async function (e) {
+  // Ignore non‑binary messages
+  if (!(e.data instanceof ArrayBuffer)) return;
+
+  /* ――― house‑keeping ――― */
+  window.removeEventListener('message', messageHandler);     // fire only once
+  if (latestUrl) {
+    URL.revokeObjectURL(latestUrl);
+    latestUrl = '';
+  }
+
+  /* ――― keep one buffer / one blob ――― */
+  const pdfBuffer = e.data;                                  // ArrayBuffer from Photopea
+  latestBlob = new Blob([pdfBuffer], { type: 'application/pdf' });
+  latestUrl  = URL.createObjectURL(latestBlob);
+
+  /* ――― update UI ――― */
+  placeholder.hidden  = true;
+  pdfEmbed.hidden     = true;
+  canvasContainer.classList.remove('d-none');
+  statusMsg.textContent = 'Processed – rendering…';
+  console.log('Processing complete. Rendering PDF to canvas…');
+
+  try {
+    /* ── render first page at edit‑friendly scale ── */
+    pdfDoc           = await pdfjsLib.getDocument({ data: pdfBuffer }).promise;
+    const page       = await pdfDoc.getPage(1);
+    const viewport   = page.getViewport({ scale: 1.2 });     // was 1.5 – lighter
+    pageWidth        = viewport.width;
+    pageHeight       = viewport.height;
+
+    pdfCanvas.width  = pageWidth;
+    pdfCanvas.height = pageHeight;
+    overlay.width    = pageWidth;
+    overlay.height   = pageHeight;
+
+    canvasCtx  = pdfCanvas.getContext('2d');
+    overlayCtx = overlay.getContext('2d');
+
+    await page.render({ canvasContext: canvasCtx, viewport }).promise;
+    pdfPixels = canvasCtx.getImageData(0, 0, pageWidth, pageHeight).data;
+
+    /* ── initialise drawing state ── */
+    allPolygons = [];
+    polygon     = [];
+    isDrawing   = true;
+
+    completeBtn.disabled = true;
+    clearBtn.disabled    = true;
+    drawCtrls.classList.remove('d-none');
+    overlay.style.pointerEvents = 'auto';
+    status.textContent = '✅ PDF rendered. Click to outline shape.';
+    drawOverlay();
+
+    console.log('Canvas editor activated for annotation.');
+  } catch (err) {
+    console.error('Error rendering PDF for editing:', err);
+    status.textContent = `❌ Error: ${err.message}`;
+  }
+
+  /* ――― show export controls ――― */
+  exportCtrls.classList.remove('d-none');
+  statusMsg.textContent = 'Processed';
+
+  /* ――― Download button ――― */
+  downloadBtn.onclick = () => {
+    console.log('Download button clicked.');
+    if (allPolygons.length === 0) {
+      const a = document.createElement('a');
+      a.href     = latestUrl;
+      a.download = originalName.replace(/\.[^.]+$/, '') + '-updated.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      console.log('Processed PDF downloaded.');
+    } else {
+      status.textContent = '📦 Generating PDF…';
+      const doc = new jsPDF({ unit: 'px', format: [pageWidth, pageHeight], compress: true });
+      const mergeCanvas = document.createElement('canvas');
+      mergeCanvas.width  = pageWidth;
+      mergeCanvas.height = pageHeight;
+      mergeCanvas.getContext('2d').drawImage(pdfCanvas, 0, 0);
+      const imgData = mergeCanvas.toDataURL('image/jpeg');
+      doc.addImage(imgData, 'JPEG', 0, 0, pageWidth, pageHeight);
+      const filename = originalName.replace(/\.[^.]+$/, '') + '-annotated.pdf';
+      doc.save(filename);
+      status.textContent = '✅ PDF ready.';
+      console.log('Annotated PDF downloaded.');
+    }
+  };
+
+  /* ――― Save‑As button ――― */
+  saveAsBtn.onclick = async () => {
+    console.log('Save As button clicked.');
+    if (!window.showSaveFilePicker) {
+      alert('Save As not supported.');
+      return;
+    }
+
+    try {
+      let pdfBlobToSave = latestBlob;
+
+      if (allPolygons.length !== 0) {
+        status.textContent = '📦 Generating PDF…';
+        const doc = new jsPDF({ unit: 'px', format: [pageWidth, pageHeight] });
+        const mergeCanvas = document.createElement('canvas');
+        mergeCanvas.width  = pageWidth;
+        mergeCanvas.height = pageHeight;
+        mergeCanvas.getContext('2d').drawImage(pdfCanvas, 0, 0);
+        const imgData = mergeCanvas.toDataURL('image/png');
+        doc.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight);
+        pdfBlobToSave = doc.output('blob');
+      }
+
+      const handle = await window.showSaveFilePicker({
+        suggestedName: originalName.replace(/\.[^.]+$/, '') +
+                       (allPolygons.length === 0 ? '-updated.pdf' : '-annotated.pdf'),
+        types: [{ description: 'PDF Files', accept: { 'application/pdf': ['.pdf'] } }]
+      });
+
+      const writable = await handle.createWritable();
+      await writable.write(pdfBlobToSave);
+      await writable.close();
+
+      status.textContent = '✅ PDF saved.';
+      console.log('PDF saved via Save As.');
+
+      /* refresh latestBlob / URL if we generated a new file */
+      if (pdfBlobToSave !== latestBlob) {
+        latestBlob = pdfBlobToSave;
+        if (latestUrl) URL.revokeObjectURL(latestUrl);
         latestUrl = URL.createObjectURL(latestBlob);
-        const date = new Date().toLocaleString();
-        const size = fmtBytes(latestBlob.size);
-        historyEntries.push({ origName: originalName, date, size, url: latestUrl });
-        updateHistoryList();
-        placeholder.style.display = 'none';
-        pdfEmbed.src = latestUrl;
-        pdfEmbed.style.display = 'block';
-        exportCtrls.classList.remove('d-none');
-        statusMsg.textContent = 'Processed';
-
-        downloadBtn.onclick = () => { const a = document.createElement('a'); a.href = latestUrl; a.download = originalName.replace(/[\.[^.]+$/, '') + '-updated.pdf'; document.body.appendChild(a); a.click(); a.remove(); };
-        saveAsBtn.onclick = async () => { if (window.showSaveFilePicker) { try { const handle = await window.showSaveFilePicker({ suggestedName: originalName.replace(/[\.[^.]+$/, '') + '-updated.pdf', types:[{description:'PDF Files',accept:{'application/pdf':['.pdf']}}] }); const writable = await handle.createWritable(); await writable.write(latestBlob); await writable.close(); } catch (err) { console.error(err); } } else alert('Save As not supported.'); };
-
-        window.removeEventListener('message', messageHandler);
-        messageHandler = null;
-      };
+      }
+    } catch (err) {
+      console.error('Save As failed:', err);
+    }
+  };
+};
       window.addEventListener('message', messageHandler);
     });
   </script>
