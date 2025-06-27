@@ -1,0 +1,120 @@
+html, body {
+  height: 100%;
+  margin: 0;
+  position: relative;
+}
+
+body {
+  display: flex;
+}
+
+#sidebar {
+  min-width: 280px;
+  max-width: 350px;
+}
+
+#preview-container {
+  flex: 1;
+  position: relative;
+  overflow: auto;
+} /* added overflow for canvas scrolling */
+
+#preview-container embed {
+  width: 100%;
+  height: 100%;
+  display: none;
+}
+
+#placeholder {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #6c757d;
+  font-size: 1.25rem;
+  text-align: center;
+}
+
+.vh-100-no-scroll {
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Header Gradient */
+#sidebar .sidebar-header {
+  position: relative;
+  background: linear-gradient(135deg, #ADD8E6, #00478F);
+}
+
+/* Button overrides */
+.btn-primary {
+  background-color: #00478F;
+  border-color: #00478F;
+  color: #fff;
+}
+.btn-primary:hover,
+.btn-primary:focus {
+  background-color: #003d7a;
+  border-color: #003d7a;
+  color: #fff;
+}
+.btn-primary:disabled,
+.btn-primary[disabled] {
+  background-color: #ccc !important;
+  border-color: #ccc !important;
+  color: #fff !important;
+  cursor: not-allowed;
+}
+.btn-outline-primary {
+  color: #00478F;
+  border-color: #00478F;
+}
+.btn-outline-primary:hover,
+.btn-outline-primary:focus {
+  background-color: #00478F;
+  color: #fff;
+}
+
+.clickable-logo,
+.clickable-title {
+  cursor: pointer;
+}
+
+.timestamp {
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+/* Canvas editor styling */
+#canvasContainer {
+  position: relative;
+}
+#canvasWrapper {
+  position: relative;
+}
+#canvasContainer canvas {
+  border: 1px solid #ccc;
+  display: block;
+}
+#overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  cursor: crosshair;
+  pointer-events: none;
+}
+
+/* Hidden status and error messages */
+#errorMsg {
+  display: none;
+}
+#statusMsg {
+  display: none;
+  color: #00478F;
+  font-weight: 600;
+}
+
+/* Sidebar footer text */
+#sidebar footer {
+  color: #6c757d;
+}
