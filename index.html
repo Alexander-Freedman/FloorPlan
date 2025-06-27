@@ -178,7 +178,7 @@ function getUserId() {
         var L = layers[i];
         if (L.typename=='ArtLayer') {
           var b=L.bounds, h=Math.round(b[3]-b[1]), w=Math.round(b[2]-b[0]);
-          if (L.kind==LayerKind.TEXT || (h==8&&w==8)) L.remove();
+          if (L.kind==LayerKind.TEXT || (h===w&&w<=13)) L.remove();
         } else if (L.typename=='LayerSet') { deleteTextLayers(L.layers); }
       }
     }
@@ -208,7 +208,7 @@ function getUserId() {
                   var b = L.bounds,
                       h = Math.round(b[3] - b[1]),
                       w = Math.round(b[2] - b[0]);
-                  if (L.kind == LayerKind.TEXT || (h == w && h <= 8)) {
+                  if (L.kind == LayerKind.TEXT || (h===w&&w<=13)) {
                       L.remove();
                   }
               } else if (L.typename == 'LayerSet') {
