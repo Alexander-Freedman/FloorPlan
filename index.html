@@ -105,10 +105,13 @@
     <div id="placeholder"><span class="icon">📂</span>No file selected</div>
     <embed id="pdfEmbed" src="" type="application/pdf" />
     <!-- NEW: Canvas-based PDF editor container -->
-    <div id="canvasContainer" class="d-none">
-      <canvas id="pdfCanvas"></canvas>
-      <canvas id="overlay"></canvas>
+    <div id="canvasContainer" class="d-none d-flex justify-content-center align-items-center">
+      <div id="canvasWrapper" style="position: relative;">
+        <canvas id="pdfCanvas" style="display: block;"></canvas>
+        <canvas id="overlay" style="position: absolute; top: 0; left: 0; pointer-events: none;"></canvas>
+      </div>
     </div>
+
     <!-- End NEW -->
   </div>
 
