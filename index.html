@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -281,7 +280,6 @@ function getUserId() {
         input.value = '';
         return;
       }
-      logAction("Upload File");
       
       trimSect.setAttribute("style", "display: block");
       exportCtrls.classList.add('d-none');
@@ -528,7 +526,6 @@ function getUserId() {
   /* ――― Download button ――― */
   downloadBtn.onclick = () => {
     console.log('Download button clicked.');
-    logAction("Download File");
     if (allPolygons.length === 0) {
       const a = document.createElement('a');
       a.href     = latestUrl;
@@ -598,7 +595,6 @@ function getUserId() {
     } catch (err) {
       console.error('Save As failed:', err);
     }
-    logAction("Download File");
   };
 };
       window.addEventListener('message', messageHandler);
