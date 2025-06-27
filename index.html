@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -124,6 +125,7 @@
   </script>
   <!-- End NEW -->
   <script>
+    
     // Initialize Bootstrap tooltips (existing functionality from Project A)
     document.addEventListener('DOMContentLoaded', function () {
       var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -131,19 +133,19 @@
         return new bootstrap.Tooltip(el);
       });
     });
+    
+    //log actions
+   function logAction(action) {
+  const formUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSflgeBvjw0Fe6cus1C6wV2e39cQU0RzpbaFxMrz8t-Mx-xvug/formResponse';
+  const formData = new URLSearchParams();
+  formData.append('entry.1427598345', getUserId());  // User ID
+  formData.append('entry.1375503741', action);       // Action
 
-  //log actions
-  function logAction(action) {
-    const formUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSflgeBvjw0Fe6cus1C6wV2e39cQU0RzpbaFxMrz8t-Mx-xvug/formResponse';
-    const formData = new URLSearchParams();
-    formData.append('entry.1427598345', getUserId());  // User ID
-    formData.append('entry.1375503741', action);       // Action
-
-    fetch(formUrl, {
-      method: 'POST',
-      mode: 'no-cors',
-      body: formData
-    });
+  fetch(formUrl, {
+    method: 'POST',
+    mode: 'no-cors',
+    body: formData
+  });
 }
 
 //creates user ID
@@ -167,13 +169,14 @@ function getUserId() {
   return id;
 }
 
+
     // Photopea scripts (from Project A)
     const fullScript_primary = `function deleteTextLayers(layers) {
       for (var i = layers.length - 1; i >= 0; i--) {
         var L = layers[i];
         if (L.typename=='ArtLayer') {
           var b=L.bounds, h=Math.round(b[3]-b[1]), w=Math.round(b[2]-b[0]);
-          if (L.kind==LayerKind.TEXT || (h===w && w<=13) L.remove();
+          if (L.kind==LayerKind.TEXT || (h==8&&w==8)) L.remove();
         } else if (L.typename=='LayerSet') { deleteTextLayers(L.layers); }
       }
     }
@@ -203,7 +206,7 @@ function getUserId() {
                   var b = L.bounds,
                       h = Math.round(b[3] - b[1]),
                       w = Math.round(b[2] - b[0]);
-                  if (L.kind == LayerKind.TEXT || (h===w && w<=13)) {
+                  if (L.kind == LayerKind.TEXT || (h == w && h <= 8)) {
                       L.remove();
                   }
               } else if (L.typename == 'LayerSet') {
@@ -278,8 +281,8 @@ function getUserId() {
         input.value = '';
         return;
       }
+      logAction("Upload File");
       
-      logAction("File Upload");
       trimSect.setAttribute("style", "display: block");
       exportCtrls.classList.add('d-none');
       drawCtrls.classList.add('d-none');        /* NEW: hide drawing controls for new file */
@@ -429,9 +432,9 @@ function getUserId() {
 
     // Process PDF button handler (Project A logic with modifications)
     actionBtn.addEventListener('click', async () => {
-      logAction("File Process");
       actionBtn.disabled = true;
       trimSect.setAttribute("style", "display: none !important");
+      logAction("Process File");
       exportCtrls.classList.add('d-none');
       statusMsg.textContent = 'Processing in API…';
       statusMsg.style.display = 'block';
@@ -525,7 +528,7 @@ function getUserId() {
   /* ――― Download button ――― */
   downloadBtn.onclick = () => {
     console.log('Download button clicked.');
-    logAction("File Download");
+    logAction("Download File");
     if (allPolygons.length === 0) {
       const a = document.createElement('a');
       a.href     = latestUrl;
@@ -553,7 +556,6 @@ function getUserId() {
   /* ――― Save‑As button ――― */
   saveAsBtn.onclick = async () => {
     console.log('Save As button clicked.');
-    logAction("File Download");
     if (!window.showSaveFilePicker) {
       alert('Save As not supported.');
       return;
@@ -596,6 +598,7 @@ function getUserId() {
     } catch (err) {
       console.error('Save As failed:', err);
     }
+    logAction("Download File");
   };
 };
       window.addEventListener('message', messageHandler);
