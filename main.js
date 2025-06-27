@@ -290,7 +290,7 @@ snapToBox.addEventListener("change", () => {
 // Draw existing polygons and preview line on overlay
 function drawOverlay(preview) {
   overlayCtx.clearRect(0, 0, pageWidth, pageHeight);
-  overlayCtx.strokeStyle = "blue";
+  overlayCtx.strokeStyle = "#FFA500";
   overlayCtx.lineWidth = 2;
   overlayCtx.setLineDash([]);
 
