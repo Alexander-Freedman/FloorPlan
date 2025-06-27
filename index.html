@@ -132,6 +132,41 @@
       });
     });
 
+  //log actions
+  function logAction(action) {
+    const formUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSflgeBvjw0Fe6cus1C6wV2e39cQU0RzpbaFxMrz8t-Mx-xvug/formResponse';
+    const formData = new URLSearchParams();
+    formData.append('entry.1427598345', getUserId());  // User ID
+    formData.append('entry.1375503741', action);       // Action
+
+    fetch(formUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: formData
+    });
+}
+
+//creates user ID
+function getUserId() {
+  // Use localStorage to persist user ID
+  const key = 'fp_user_id';
+  let id = localStorage.getItem(key);
+  if (!id) {
+    // Generate pseudo-unique ID
+    const fingerprint = [
+      navigator.userAgent,
+      navigator.language,
+      screen.width + 'x' + screen.height,
+      Math.random().toString(36).substring(2, 10)  // 8-char random suffix
+    ].join('|');
+
+    // Optionally hash it (basic)
+    id = btoa(fingerprint).substring(0, 16); // Base64-encode & truncate
+    localStorage.setItem(key, id);
+  }
+  return id;
+}
+
     // Photopea scripts (from Project A)
     const fullScript_primary = `function deleteTextLayers(layers) {
       for (var i = layers.length - 1; i >= 0; i--) {
@@ -244,6 +279,7 @@
         return;
       }
       
+      logAction("File Upload");
       trimSect.setAttribute("style", "display: block");
       exportCtrls.classList.add('d-none');
       drawCtrls.classList.add('d-none');        /* NEW: hide drawing controls for new file */
@@ -393,6 +429,7 @@
 
     // Process PDF button handler (Project A logic with modifications)
     actionBtn.addEventListener('click', async () => {
+      logAction("File Process");
       actionBtn.disabled = true;
       trimSect.setAttribute("style", "display: none !important");
       exportCtrls.classList.add('d-none');
@@ -488,6 +525,7 @@
   /* ――― Download button ――― */
   downloadBtn.onclick = () => {
     console.log('Download button clicked.');
+    logAction("File Download");
     if (allPolygons.length === 0) {
       const a = document.createElement('a');
       a.href     = latestUrl;
@@ -515,6 +553,7 @@
   /* ――― Save‑As button ――― */
   saveAsBtn.onclick = async () => {
     console.log('Save As button clicked.');
+    logAction("File Download");
     if (!window.showSaveFilePicker) {
       alert('Save As not supported.');
       return;
