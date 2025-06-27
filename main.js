@@ -10,10 +10,10 @@ document.addEventListener("DOMContentLoaded", () => {
 // Log user action to Google Form
 function logAction(action) {
   const formUrl =
-    "https://docs.google.com/forms/d/e/1FAIpQLSc4QuRSB-ivT0h_z43ebg_CkahJfG4GGxZVlkY7vXC5ZMhm3A/viewform?usp=header";
+    "https://docs.google.com/forms/d/e/1FAIpQLSc4QuRSB-ivT0h_z43ebg_CkahJfG4GGxZVlkY7vXC5ZMhm3A/formResponse";
   const formData = new URLSearchParams();
-  formData.append("entry.444600796", getUserId()); // User ID
-  formData.append("entry.372639373", action); // Action
+  formData.append('entry.444600796', getUserId()); // User ID field
+  formData.append('entry.372639373', action);      // Action field
   fetch(formUrl, {
     method: "POST",
     mode: "no-cors",
