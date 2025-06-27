@@ -330,8 +330,8 @@ function getUserId() {
 
     overlay.addEventListener('click', (e) => {
       const rect = overlay.getBoundingClientRect();
-      const rawX = e.clientX - rect.left;
-      const rawY = e.clientY - rect.top;
+      const rawX = e.offsetX;
+      const rawY = e.offsetY;
       if (!isDrawing) return;
       polygon.push({ x: rawX, y: rawY });
       completeBtn.disabled = polygon.length < 3;
@@ -341,8 +341,8 @@ function getUserId() {
 
     overlay.addEventListener('mousemove', (e) => {
       const rect = overlay.getBoundingClientRect();
-      const rawX = e.clientX - rect.left;
-      const rawY = e.clientY - rect.top;
+      const rawX = e.offsetX;
+      const rawY = e.offsetY;
       drawOverlay({ x: rawX, y: rawY });
     });
 
