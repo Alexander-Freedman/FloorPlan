@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -244,6 +243,7 @@
         input.value = '';
         return;
       }
+      
       trimSect.setAttribute("style", "display: block");
       exportCtrls.classList.add('d-none');
       drawCtrls.classList.add('d-none');        /* NEW: hide drawing controls for new file */
@@ -262,7 +262,8 @@
       clearBtn.disabled = true;
       placeholder.style.display = 'none';
       pdfEmbed.src = URL.createObjectURL(file);
-      pdfEmbed.style.display = 'block';
+      pdfEmbed.hidden = false;
+      pdfEmbed.setAttribute("style", "display: block")
     });
 
     function snapToContour(x, y) {
