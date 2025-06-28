@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+  <title>Floor Plan Optimizer</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="usig.png" />
+  <link rel="shortcut icon" href="usig.png" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    html, body { height: 100%; margin: 0; position: relative; }
+    body { display: flex; }
+    #sidebar { min-width: 280px; max-width: 350px; }
+    #preview-container { flex: 1; position: relative; overflow: auto; } /* MODIFIED: added overflow for canvas scrolling */
+    #preview-container embed { width: 100%; height: 100%; display: none; }
+    #placeholder { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #6c757d; font-size: 1.25rem; text-align: center; }
+    .vh-100-no-scroll { height: 100vh; overflow: hidden; }
+    #sidebar .sidebar-header { position: relative; background: linear-gradient(135deg, #ADD8E6, #00478F); }
+    .btn-primary { background-color: #00478F; border-color: #00478F; color: #fff; }
+    .btn-primary:hover, .btn-primary:focus { background-color: #003d7a; border-color: #003d7a; color: #fff; }
+    .btn-primary:disabled, .btn-primary[disabled] { background-color: #ccc !important; border-color: #ccc !important; color: #fff !important; cursor: not-allowed; }
+    .btn-outline-primary { color: #00478F; border-color: #00478F; }
+    .btn-outline-primary:hover, .btn-outline-primary:focus { background-color: #00478F; color: #fff; }
+    .clickable-logo, .clickable-title { cursor: pointer; }
+    .timestamp { font-size: 0.8rem; color: #6c757d; }
+    #canvasContainer { position: relative; }
+    #canvasContainer canvas { border: 1px solid #ccc; display: block; }
+    #overlay { position: absolute; top: 0; left: 0; cursor: crosshair; pointer-events: none; }
+  </style>
+</head>
+<body class="vh-100-no-scroll">
+  <div id="sidebar" class="d-flex flex-column bg-light border-end vh-100-no-scroll">
+    <div class="p-3 text-white sidebar-header">
+      <div class="d-flex align-items-center">
+        <img src="usig.png" alt="USIG Logo" width="50" class="me-3 clickable-logo" onclick="location.reload()" />
+        <div>
+          <h4 class="mb-0 clickable-title" onclick="location.reload()">Floor Plan Optimizer</h4>
+          <small class="opacity-75">by Alexander Freedman</small>
+        </div>
+      </div>
+      <div class="mt-2">
+        <a href="https://linkedin.com/in/alexanderrfreedman" target="_blank" class="text-white me-3">LinkedIn</a>
+        <a href="https://github.com/Alexander-Freedman" target="_blank" class="text-white">GitHub</a>
+      </div>
+      <button type="button" class="btn btn-light btn-sm position-absolute bottom-0 end-0 m-2" data-bs-toggle="tooltip" title="Download a PDF of the floor plans from HIM. Upload here.">?</button>
+    </div>
+    <div class="p-3 flex-grow-1 overflow-auto">
+      <form id="controlForm">
+        <div id="errorMsg" class="text-danger text-center mb-2" style="display:none;"></div>
+        <div id="statusMsg" class="text-center mb-2" style="display:none; color:#00478F; font-weight:600;"></div>
+        <div class="mb-3 text-center">
+          <input class="form-control" type="file" id="fileInput" accept=".pdf" />
+        </div>
+        <div class="form-check form-switch mb-3 d-flex justify-content-end align-items-center">
+          <label class="form-check-label me-5" for="trimCheckbox">Trim</label>
+          <input class="form-check-input" type="checkbox" id="trimCheckbox">
+        </div>
+        <div class="d-grid gap-2 mb-3">
+          <button type="button" id="actionBtn" class="btn btn-primary" disabled>Process PDF</button>
+        </div>
+        <div id="export-controls" class="d-none mb-3">
+          <div class="btn-group w-100">
+            <button type="button" id="downloadBtn" class="btn btn-outline-primary">Download</button>
+            <button type="button" id="saveAsBtn" class="btn btn-outline-primary">Save As</button>
+          </div>
+        </div>
+        <div id="draw-controls" class="d-none mb-3">
+          <div class="btn-group w-100 mb-2">
+            <button type="button" id="clearBtn" class="btn btn-primary" disabled>Clear Drawing</button>
+          </div>
+          <div class="d-grid gap-2">
+            <button type="button" id="completeBtn" class="btn btn-primary" disabled>Complete Shape &amp; Fill</button>
+          </div>
+        </div>
+        <ul id="doc-info" class="list-group">
+          <li class="list-group-item"><strong>Filename:</strong> <span id="info-filename">N/A</span></li>
+          <li class="list-group-item"><strong>Upload Date:</strong> <span id="info-date">N/A</span></li>
+          <li class="list-group-item"><strong>File Size:</strong> <span id="info-size">N/A</span></li>
+        </ul>
+      </form>
+    </div>
+    <footer class="text-center p-2 mt-auto" style="color: #6c757d;">
+      © 2025 Alexander Freedman
+    </footer>
+  </div>
+  <div id="preview-container" class="vh-100-no-scroll">
+    <div id="placeholder"><span class="icon">📂</span>No file selected</div>
+    <embed id="pdfEmbed" src="" type="application/pdf" />
+    <div id="canvasContainer" class="d-none">
+      <canvas id="pdfCanvas"></canvas>
+      <canvas id="overlay"></canvas>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    const { jsPDF } = window.jspdf;
+  </script>
+  <script>
+    
+    function logAction(action) {
+  const formUrl =
+    "https://docs.google.com/forms/d/e/1FAIpQLSd3inMyVcP7MIkobcTnPkih1zpwhCtcljK-NNcSKWo05fS0kA/formResponse";
+  const formData = new URLSearchParams();
+  formData.append('entry.1427598345', getUserId());
+  formData.append('entry.1375503741', action);
+  fetch(formUrl, {
+    method: "POST",
+    mode: "no-cors",
+    body: formData,
+  });
+}
+
+function getUserId() {
+  const key = "fp_user_id";
+  let id = localStorage.getItem(key);
+  if (!id) {
+    const fingerprint = [
+      navigator.userAgent,
+      navigator.language,
+      screen.width + "x" + screen.height,
+      Math.random().toString(36).substring(2, 10),
+    ].join("|");
+    id = btoa(fingerprint).substring(0, 16);
+    localStorage.setItem(key, id);
+  } else {
+  }
+  return id;
+}
+
+  </script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+      tooltipTriggerList.map(function (el) {
+        return new bootstrap.Tooltip(el);
+      });
+    });
+
+    const fullScript_primary = `function deleteTextLayers(layers) {
+      for (var i = layers.length - 1; i >= 0; i--) {
+        var L = layers[i];
+        if (L.typename=='ArtLayer') {
+          var b=L.bounds, h=Math.round(b[3]-b[1]), w=Math.round(b[2]-b[0]);
+          if (L.kind==LayerKind.TEXT || (h==8&&w==8)) L.remove();
+        } else if (L.typename=='LayerSet') { deleteTextLayers(L.layers); }
+      }
+    }
+    (function(){ 
+      deleteTextLayers(app.activeDocument.layers); 
+      app.activeDocument.saveToOE("pdf");
+      app.activeDocument.flatten();      
+      })();`.trim();
+
+    const fullScript_trim = `
+      var phrase = /floor\\s+plan\\s+drawings/i;
+      function hasPhrase(layer) {
+          if (layer.typename === "ArtLayer" && layer.kind === LayerKind.TEXT)
+              return phrase.test(layer.textItem.contents);
+          if (layer.layers)
+              for (var j = 0; j < layer.layers.length; j++)
+                  if (hasPhrase(layer.layers[j])) return true;
+          return false;
+      }
+      var pages = app.activeDocument.layers;
+      for (var i = pages.length - 1; i >= 0; i--)
+          if (!hasPhrase(pages[i])) pages[i].remove();
+      function deleteTextLayers(layers) {
+          for (var i = layers.length - 1; i >= 0; i--) {
+              var L = layers[i];
+              if (L.typename == 'ArtLayer') {
+                  var b = L.bounds,
+                      h = Math.round(b[3] - b[1]),
+                      w = Math.round(b[2] - b[0]);
+                  if (L.kind == LayerKind.TEXT || (h == w && h <= 8)) {
+                      L.remove();
+                  }
+              } else if (L.typename == 'LayerSet') {
+                  deleteTextLayers(L.layers);
+              }
+          }
+      }
+      (function () {
+          deleteTextLayers(app.activeDocument.layers);
+          app.activeDocument.saveToOE('pdf');
+          app.activeDocument.flatten();
+      })();`.trim();
+
+    const input = document.getElementById('fileInput');
+    const trimCheckbox = document.getElementById('trimCheckbox');
+    const actionBtn = document.getElementById('actionBtn');
+    const exportCtrls = document.getElementById('export-controls');
+    const placeholder = document.getElementById('placeholder');
+    const pdfEmbed = document.getElementById('pdfEmbed');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const saveAsBtn = document.getElementById('saveAsBtn');
+    const errorMsg = document.getElementById('errorMsg');
+    const statusMsg = document.getElementById('statusMsg');
+    const infoFilename = document.getElementById('info-filename');
+    const infoDate = document.getElementById('info-date');
+    const infoSize = document.getElementById('info-size');
+    const pdfCanvas = document.getElementById('pdfCanvas');
+    const overlay = document.getElementById('overlay');
+    const completeBtn = document.getElementById('completeBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const drawCtrls = document.getElementById('draw-controls');
+    const canvasContainer = document.getElementById('canvasContainer');
+    let originalName = '', latestBlob = null, latestUrl = '', messageHandler = null;
+    let trim_bool = false;
+    let canvasCtx, overlayCtx;
+    let pageWidth, pageHeight;
+    let pdfDoc = null;
+    let pdfPixels;
+    let allPolygons = [];  
+    let polygon = [];       
+    let isDrawing = true;
+    trimCheckbox.addEventListener('change', () => {
+      trim_bool = trimCheckbox.checked;
+    });
+
+    function fmtBytes(b) {
+      if (b < 1024) return b + ' B';
+      if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+      return (b / 1048576).toFixed(1) + ' MB';
+    }
+    input.addEventListener('change', () => {
+      errorMsg.style.display = 'none';
+      statusMsg.style.display = 'none';
+      if (!input.files.length) return;
+      const file = input.files[0];
+      if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+        errorMsg.textContent = 'Please select a PDF file.';
+        errorMsg.style.display = 'block';
+        input.value = '';
+        return;
+      }
+      exportCtrls.classList.add('d-none');
+      drawCtrls.classList.add('d-none');        
+      if (canvasContainer) canvasContainer.classList.add('d-none');  
+      if (latestUrl) { URL.revokeObjectURL(latestUrl); latestUrl = ''; } 
+      actionBtn.disabled = false;
+      originalName = file.name;
+      infoFilename.textContent = originalName;
+      infoDate.textContent = new Date().toLocaleString();
+      infoSize.textContent = fmtBytes(file.size);
+      allPolygons = [];
+      polygon = [];
+      isDrawing = true;
+      completeBtn.disabled = true;
+      clearBtn.disabled = true;
+      placeholder.style.display = 'none';
+      pdfEmbed.src = URL.createObjectURL(file);
+      pdfEmbed.style.display = 'block';
+    });
+
+    function snapToContour(x, y) {
+      const radius = 3000;
+      let best = { x, y, dist2: radius * radius };
+      if (!pdfPixels) return { x, y };
+      for (let dy = -radius; dy <= radius; dy++) {
+        const yy = y + dy;
+        if (yy < 0 || yy >= pageHeight) continue;
+        for (let dx = -radius; dx <= radius; dx++) {
+          const xx = x + dx;
+          if (xx < 0 || xx >= pageWidth) continue;
+          const d2 = dx * dx + dy * dy;
+          if (d2 >= best.dist2) continue;
+          const idx = (yy * pageWidth + xx) * 4;
+          const r = pdfPixels[idx], g = pdfPixels[idx+1], b = pdfPixels[idx+2];
+          if (Math.abs(r-g) < 20 && Math.abs(r-b) < 20 && r > 80 && r < 200) {
+            best = { x: xx, y: yy, dist2: d2 };
+          }
+        }
+      }
+      return { x: best.x, y: best.y };
+    }
+
+    overlay.addEventListener('click', (e) => {
+      const rect = overlay.getBoundingClientRect();
+      const rawX = e.clientX - rect.left;
+      const rawY = e.clientY - rect.top;
+      if (!isDrawing) return;
+      const { x, y } = snapToContour(rawX, rawY);
+      polygon.push({ x: x, y: y });
+      completeBtn.disabled = polygon.length < 3;
+      drawOverlay();
+    });
+
+    overlay.addEventListener('mousemove', (e) => {
+      const rect = overlay.getBoundingClientRect();
+      const rawX = e.clientX - rect.left;
+      const rawY = e.clientY - rect.top;
+      const { x, y } = snapToContour(rawX, rawY);
+      drawOverlay({ x: x, y: y });
+    });
+
+    completeBtn.addEventListener('click', () => {
+      if (polygon.length < 3) return;
+      clearBtn.disabled = true;
+      isDrawing = false;
+      for (let i = 0; i < polygon.length; i++) {
+        const { x, y } = snapToContour(polygon[i].x, polygon[i].y);
+        polygon[i] = { x, y }; 
+      }
+      allPolygons.push(polygon);
+      fillPolygon(polygon);
+      polygon = [];
+      isDrawing = true;
+      completeBtn.disabled = true;
+      downloadPdfBtn.disabled = false;
+    });
+
+    clearBtn.addEventListener('click', () => {
+      clearBtn.disabled = true;
+      allPolygons = [];
+      polygon = [];
+      isDrawing = true;
+      drawOverlay();
+    });
+
+    function drawOverlay(preview) {
+      overlayCtx.clearRect(0, 0, pageWidth, pageHeight);
+      overlayCtx.strokeStyle = 'blue';
+      overlayCtx.lineWidth = 2;
+      overlayCtx.setLineDash([]);
+      allPolygons.forEach(poly => {
+        overlayCtx.beginPath();
+        overlayCtx.moveTo(poly[0].x, poly[0].y);
+        poly.slice(1).forEach(p => overlayCtx.lineTo(p.x, p.y));
+        overlayCtx.closePath();
+        overlayCtx.stroke();
+      });
+      if (polygon.length) {
+        overlayCtx.beginPath();
+        clearBtn.disabled = false;
+        overlayCtx.moveTo(polygon[0].x, polygon[0].y);
+        polygon.slice(1).forEach(p => overlayCtx.lineTo(p.x, p.y));
+        overlayCtx.stroke();
+        if (preview) {
+          overlayCtx.setLineDash([5, 5]);
+          overlayCtx.beginPath();
+          overlayCtx.moveTo(polygon[polygon.length - 1].x, polygon[polygon.length - 1].y);
+          overlayCtx.lineTo(preview.x, preview.y);
+          overlayCtx.stroke();
+          overlayCtx.setLineDash([]);
+        }
+      }
+    }
+
+    function fillPolygon(poly) {
+      overlayCtx.clearRect(0, 0, pageWidth, pageHeight);
+      overlayCtx.save();
+      overlayCtx.beginPath();
+      overlayCtx.moveTo(poly[0].x, poly[0].y);
+      poly.slice(1).forEach(p => overlayCtx.lineTo(p.x, p.y));
+      overlayCtx.closePath();
+      overlayCtx.clip();
+      overlayCtx.strokeStyle = 'blue';
+      overlayCtx.lineWidth = 1;
+      const step = 40;
+      for (let x0 = -pageHeight; x0 < pageWidth + pageHeight; x0 += step) {
+        overlayCtx.beginPath();
+        overlayCtx.moveTo(x0, 0);
+        overlayCtx.lineTo(x0 + pageHeight, pageHeight);
+        overlayCtx.stroke();
+      }
+      overlayCtx.restore();
+      canvasCtx.drawImage(overlay, 0, 0);
+      overlayCtx.clearRect(0, 0, pageWidth, pageHeight);
+    }
+    actionBtn.addEventListener('click', async () => {
+      actionBtn.disabled = true;
+      exportCtrls.classList.add('d-none');
+      statusMsg.textContent = 'Processing in API…';
+      logAction("Process File");
+      statusMsg.style.display = 'block';
+      if (messageHandler) { 
+        window.removeEventListener('message', messageHandler); 
+        messageHandler = null; 
+      }
+      if (latestUrl) { URL.revokeObjectURL(latestUrl); latestUrl = ''; }
+      const dataURL = await new Promise(resolve => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(fr.result);
+        fr.readAsDataURL(input.files[0]);
+      });
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      if (trim_bool) {
+        iframe.src = 'https://www.photopea.com#' + encodeURIComponent(JSON.stringify({ files: [dataURL], script: fullScript_trim }));
+      } else {
+        iframe.src = 'https://www.photopea.com#' + encodeURIComponent(JSON.stringify({ files: [dataURL], script: fullScript_primary }));
+      }
+      document.body.appendChild(iframe);
+
+      messageHandler = async function (e) {
+  if (!(e.data instanceof ArrayBuffer)) return;
+
+  window.removeEventListener('message', messageHandler); 
+  if (latestUrl) {
+    URL.revokeObjectURL(latestUrl);
+    latestUrl = '';
+  }
+
+  const pdfBuffer = e.data;                            
+  latestBlob = new Blob([pdfBuffer], { type: 'application/pdf' });
+  latestUrl  = URL.createObjectURL(latestBlob);
+  placeholder.hidden  = true;
+  pdfEmbed.hidden     = true;
+  canvasContainer.classList.remove('d-none');
+  statusMsg.textContent = 'Processed – rendering…';
+
+  try {
+    pdfDoc           = await pdfjsLib.getDocument({ data: pdfBuffer }).promise;
+    const page       = await pdfDoc.getPage(1);
+    const viewport   = page.getViewport({ scale: 1.2 });  
+    pageWidth        = viewport.width;
+    pageHeight       = viewport.height;
+
+    pdfCanvas.width  = pageWidth;
+    pdfCanvas.height = pageHeight;
+    overlay.width    = pageWidth;
+    overlay.height   = pageHeight;
+
+    canvasCtx  = pdfCanvas.getContext('2d');
+    overlayCtx = overlay.getContext('2d');
+
+    await page.render({ canvasContext: canvasCtx, viewport }).promise;
+    pdfPixels = canvasCtx.getImageData(0, 0, pageWidth, pageHeight).data;
+
+    allPolygons = [];
+    polygon     = [];
+    isDrawing   = true;
+
+    completeBtn.disabled = true;
+    clearBtn.disabled    = true;
+    drawCtrls.classList.remove('d-none');
+    overlay.style.pointerEvents = 'auto';
+    drawOverlay();
+    
+  } catch (err) {
+    console.log;
+  }
+  exportCtrls.classList.remove('d-none');
+  downloadBtn.onclick = () => {
+    if (allPolygons.length === 0) {
+      const a = document.createElement('a');
+      a.href     = latestUrl;
+      a.download = originalName.replace(/\.[^.]+$/, '') + '-updated.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } else {
+      const doc = new jsPDF({ unit: 'px', format: [pageWidth, pageHeight], compress: true });
+      const mergeCanvas = document.createElement('canvas');
+      mergeCanvas.width  = pageWidth;
+      mergeCanvas.height = pageHeight;
+      mergeCanvas.getContext('2d').drawImage(pdfCanvas, 0, 0);
+      const imgData = mergeCanvas.toDataURL('image/jpeg');
+      doc.addImage(imgData, 'JPEG', 0, 0, pageWidth, pageHeight);
+      const filename = originalName.replace(/\.[^.]+$/, '') + '-annotated.pdf';
+      doc.save(filename);
+    }
+  };
+  saveAsBtn.onclick = async () => {
+    if (!window.showSaveFilePicker) {
+      alert('Save As not supported.');
+      return;
+    }
+
+    try {
+      let pdfBlobToSave = latestBlob;
+
+      if (allPolygons.length !== 0) {
+        const doc = new jsPDF({ unit: 'px', format: [pageWidth, pageHeight] });
+        const mergeCanvas = document.createElement('canvas');
+        mergeCanvas.width  = pageWidth;
+        mergeCanvas.height = pageHeight;
+        mergeCanvas.getContext('2d').drawImage(pdfCanvas, 0, 0);
+        const imgData = mergeCanvas.toDataURL('image/png');
+        doc.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight);
+        pdfBlobToSave = doc.output('blob');
+      }
+
+      const handle = await window.showSaveFilePicker({
+        suggestedName: originalName.replace(/\.[^.]+$/, '') +
+                       (allPolygons.length === 0 ? '-updated.pdf' : '-annotated.pdf'),
+        types: [{ description: 'PDF Files', accept: { 'application/pdf': ['.pdf'] } }]
+      });
+
+      const writable = await handle.createWritable();
+      await writable.write(pdfBlobToSave);
+      await writable.close();
+
+      } catch (err) {
+     console.log;
+  }
+
+      if (pdfBlobToSave !== latestBlob) {
+        latestBlob = pdfBlobToSave;
+        if (latestUrl) URL.revokeObjectURL(latestUrl);
+        latestUrl = URL.createObjectURL(latestBlob);
+      }
+  };
+};
+      window.addEventListener('message', messageHandler);
+    });
+  </script>
+</body>
+</html>
