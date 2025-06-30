@@ -31,13 +31,14 @@
 
 ## File Structure
 
+```
 / (project root)
 ├── index.html # Main application interface
 ├── main.js # JavaScript for PDF processing and drawing
 ├── styles.css # Styles for the web UI
 ├── code.png # Sample image or screenshot
 └── README.md # Project documentation
-
+```
 
 ## Support
 
