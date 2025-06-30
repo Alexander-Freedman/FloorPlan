@@ -1,36 +1,48 @@
 # [Floor Plan Optimizer](https://alexander-freedman.github.io/FloorPlan/)
 
-**Property of Alexander Freedman**
+**Created by Alexander Freedman**
 
 ## Overview
 
-Floor Plan Optimizer is a simple web-based tool created for a floor installation company to help installers and designers clean up architectural floor plan PDFs. By removing text layers and preserving only the linework, it produces streamlined, annotation-free plans ready for further processing or CAD conversion.
+**Floor Plan Optimizer** is a web-based tool developed for a floor installation company to streamline the cleanup of architectural floor plan PDFs. It removes unnecessary text layers while preserving the original linework, resulting in simplified, annotation-free plans ready for further processing or CAD conversion. After processing, users can draw blue hatch lines directly on the cleaned plan to mark key areas.
 
 ## Features
 
-* **PDF Upload & Preview:** Select and preview your floor plan PDF directly in the browser.
-* **Text Removal:** Uses a Photopea script to strip away all text layers, leaving only the original linework intact.
-* **Download & Save:** Download the cleaned PDF or save it locally using the browser's Save As functionality.
+- **PDF Upload and Preview**  
+  Select and preview floor plan PDFs directly in the browser.
+
+- **Text Removal**  
+  Utilizes a Photopea script to remove all text layers, retaining only structural and design elements.
+
+- **Interactive Hatching**  
+  After processing, draw blue hatch lines directly on the plan to mark rooms, materials, or areas.
+
+- **Download and Save**  
+  Export the cleaned and marked-up PDF using the browser’s built-in download or Save As functionality.
 
 ## Getting Started
 
-1. **Clone or Download** this repository to your local machine.
+1. Clone or download this repository to your local machine.
 2. Open `index.html` in a modern web browser (Chrome, Firefox, Edge, Safari).
-3. Use the **Choose File** button to select your floor plan PDF.
-4. Click **Process PDF** to clean the plan.
-5. Once processing completes, download the cleaned PDF via the **Download** button or use **Save As**.
+3. Click **Choose File** to upload a floor plan PDF.
+4. Click **Process PDF** to clean the file.
+5. Once processing is complete, use your cursor to draw blue hatch lines on the plan.
+6. Download the marked-up PDF via the **Download** button or use your browser’s **Save As** option.
 
 ## File Structure
 
-```
 / (project root)
-├── index.html        # Main application UI
-└── README.md         # This documentation
-```
+├── index.html # Main application interface
+├── main.js # JavaScript for PDF processing and drawing
+├── styles.css # Styles for the web UI
+├── code.png # Sample image or screenshot
+└── README.md # Project documentation
+
 
 ## Support
 
-For questions or issues, contact Alexander Freedman at [alexanderrfreedman@gmail.com](mailto:alexanderrfreedman@gmail.com).
+For questions or issues, contact Alexander Freedman at  
+[alexanderrfreedman@gmail.com](mailto:alexanderrfreedman@gmail.com)
 
 ---
 
