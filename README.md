@@ -42,8 +42,7 @@
 
 ## Support
 
-For questions or issues, contact Alexander Freedman at  
-[alexanderrfreedman@gmail.com](mailto:alexanderrfreedman@gmail.com)
+For questions or issues, contact Alexander Freedman at [alexanderrfreedman@gmail.com](mailto:alexanderrfreedman@gmail.com)
 
 ---
 
